@@ -1,7 +1,7 @@
 class Mujs
   VERSION = "0.1.0"
 
-  alias DefnArguments = Hash(Int32, Float64 | String)
+  alias DefnArguments = Hash(Int32, Float64 | String | Nil)
 
   private macro must_be(ctype, msg)
     if LibMujs.js_type(@j, -1) != {{ctype}}
@@ -29,6 +29,8 @@ class Mujs
       LibMujs.js_pushnumber(state, {{val}})
     when String
       LibMujs.js_pushstring(state, {{val}})
+    when nil
+      LibMujs.js_pushnull(state)
     else
       raise "unknown how to cast value of type #{{{val}}.class}"
     end
@@ -45,6 +47,9 @@ class Mujs
       pop_as_boolean
     when LibMujs::JsIsnull
       nil
+    when LibMujs::JsIsobject
+      # TODO: pop as hash
+      pop_as_string
     else
       raise "unknow how to cast javascript type #{_js_type}"
     end
@@ -84,42 +89,54 @@ class Mujs
     pop_and_cast
   end
 
-  @@functions = Hash(String, Pointer(Void)).new
+  def var(name)
+    LibMujs.js_getglobal(@j, name)
+    pop_and_cast
+  end
 
-  def defn(fn_name, *types, &)
+  @@functions = Hash({Mujs, String}, Pointer(Void)).new
+
+  def defn(fn_name, fn_num_args, &)
     capture = yield
 
-    boxed_data = Box.box({capture, types})
+    boxed_data = Box.box({capture, fn_num_args})
 
     # avoid GC collector
-    @@functions[fn_name] = boxed_data
+    @@functions[{self, fn_name}] = boxed_data
 
     LibMujs.js_newcfunctionx(@j,
       ->(state) {
         data = LibMujs.js_currentfunctiondata(state)
-        fn, fn_arg_types = Box(typeof({capture, types})).unbox(data)
+        fn, fn_arity = Box(typeof({capture, fn_num_args})).unbox(data)
 
         args = DefnArguments.new
-        arg_idx = 0
-        fn_arg_types.each do |arg_type|
-          arg_idx += 1
-          arg_key = arg_idx - 1
-          case arg_type.to_s
-          when "Int32"
+        fn_arity.times do |idx|
+          arg_idx = idx + 1
+          arg_key = idx
+
+          arg_js_type = LibMujs.js_type(state, arg_idx)
+          case arg_js_type
+          when LibMujs::JsIsnumber
             args[arg_key] = LibMujs.js_tonumber(state, arg_idx)
-          when "Float64"
-            args[arg_key] = LibMujs.js_tonumber(state, arg_idx)
-          when "String"
+          when LibMujs::JsIsstring
             args[arg_key] = String.new(LibMujs.js_tostring(state, arg_idx))
+          when LibMujs::JsIsnull
+            args[arg_key] = nil
           else
-            raise "uknown how to handle argument type #{arg_type}"
+            raise "uknown how to handle argument type #{arg_js_type}"
           end
         end
 
-        res = fn.call(args)
-        cast_and_push(res)
+        begin
+          res = fn.call(args)
+          cast_and_push(res)
+        rescue ex
+          # TODO: improv
+          LibMujs.js_error(state, "HOST EXCEPTION: #{ex.inspect_with_backtrace}")
+          LibMujs.js_throw(state)
+        end
       }, fn_name,
-      types.size, boxed_data, nil)
+      fn_num_args, boxed_data, nil)
     LibMujs.js_setglobal(@j, fn_name)
   end
 

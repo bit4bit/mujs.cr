@@ -2,6 +2,7 @@ class Mujs
   VERSION = "0.1.0"
 
   alias DefnArguments = Hash(Int32, Float64 | String | Nil)
+  alias DefnReturn = Float64 | String | Nil
 
   private macro must_be(ctype, msg)
     if LibMujs.js_type(@j, -1) != {{ctype}}
@@ -96,9 +97,7 @@ class Mujs
 
   @@functions = Hash({Mujs, String}, Pointer(Void)).new
 
-  def defn(fn_name, fn_num_args, &)
-    capture = yield
-
+  def defn(fn_name, fn_num_args, &capture : (DefnArguments -> DefnReturn))
     boxed_data = Box.box({capture, fn_num_args})
 
     # avoid GC collector

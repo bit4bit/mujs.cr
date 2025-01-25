@@ -24,26 +24,20 @@ describe Mujs do
   it "js->host call function" do
     js = Mujs.new
 
-    js.defn("suma", 2) do
-      ->(args : Mujs::DefnArguments) {
-        return args[0].as(Float64) + args[1].as(Float64)
-      }
+    js.defn("suma", 2) do |args|
+      args[0].as(Float64) + args[1].as(Float64)
     end
 
     js.call("suma", 1, 2).should eq(3)
 
-    js.defn("concatenar", 2) do
-      ->(args : Mujs::DefnArguments) {
-        return args[0].as(String) + args[1].as(String)
-      }
+    js.defn("concatenar", 2) do |args|
+      args[0].as(String) + args[1].as(String)
     end
 
     js.call("concatenar", "a", "b").should eq("ab")
 
-    js.defn("nulo", 0) do
-      ->(args : Mujs::DefnArguments) {
-        return nil
-      }
+    js.defn("nulo", 0) do |args|
+      nil
     end
 
     js.call("nulo").should eq(nil)
@@ -52,13 +46,10 @@ describe Mujs do
   it "js->host call function exception on javascript side" do
     js = Mujs.new
 
-    js.defn("exception", 0) do
-      ->(args : Mujs::DefnArguments) {
-        raise "exception host"
-        return nil
-      }
+    js.defn("exception", 0) do |args|
+      raise "exception host"
+      nil
     end
-
 
     expect_raises(Exception) do
       js.call("exception").should eq("ab")

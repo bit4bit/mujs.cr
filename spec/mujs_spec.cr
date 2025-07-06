@@ -6,6 +6,14 @@ describe Mujs do
     Mujs.new
   end
 
+  it "has_function?" do
+    js = Mujs.new
+    js.dostring(%[function funcion() { }])
+
+    js.has_function?("funcion").should eq(true)
+    js.has_function?("invalid").should eq(false)
+  end
+
   it "host->js call function" do
     js = Mujs.new
     js.dostring(%[function concatenar(a, b){ return a + b; };])

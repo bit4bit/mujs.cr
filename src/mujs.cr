@@ -88,6 +88,11 @@ class Mujs
     LibMujs.js_dostring(@j, code)
   end
 
+  def has_function?(fn_name : String)
+    LibMujs.js_getglobal(@j, fn_name)
+    LibMujs.js_type(@j, -1) == LibMujs::JsIsfunction
+  end
+
   def call(fn_name : String, *args)
     LibMujs.js_getglobal(@j, fn_name)
     must_be(LibMujs::JsIsfunction, "`#{fn_name}` is not a function")

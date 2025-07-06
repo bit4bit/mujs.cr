@@ -27,13 +27,17 @@ describe Mujs do
   it "host->js sharing opaque resource" do
     opaque = Hash(UInt64, Pointer(Void)).new
     js = Mujs.new
-    sample = URI.parse("http://localhost")
 
-    js.dostring(%[function identity(resource){ return resource; };])
+    js.defn("do_uri", 1) do |args|
+      Mujs::Opaque.box(js, URI.parse(args[0].as(String)))
+    end
 
-    ret = js.call("identity", Mujs::Opaque.box(js, sample))
+    js.dostring(%[function uri(url){ return do_uri(url); };])
 
-    Mujs::Opaque(URI).unbox(js, ret).should eq sample
+    ret = js.call("uri", "http://localhost")
+
+    uri = Mujs::Opaque(URI).unbox(js, ret)
+    uri.host.should eq "localhost"
   end
 
   it "js->host call function" do

@@ -18,8 +18,8 @@ class Mujs
     end
   end
 
-  alias DefnArguments = Hash(Int32, Bool | Float64 | String | Nil)
-  alias DefnReturn = Bool | Float64 | String | Nil
+  alias DefnArguments = Hash(Int32, Bool | UInt64 | Float64 | String | Nil)
+  alias DefnReturn = Bool | UInt64 | Float64 | String | Nil
 
   private macro must_be(ctype, msg)
     if LibMujs.js_type(@j, -1) != {{ctype}}
@@ -43,6 +43,8 @@ class Mujs
     case {{val}}
     when Bool
       LibMujs.js_pushboolean(state, {{val}})
+    when UInt64
+      LibMujs.js_pushnumber(state, {{val}})
     when Float64
       LibMujs.js_pushnumber(state, {{val}})
     when Int32

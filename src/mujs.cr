@@ -1,3 +1,5 @@
+require "./lib_mujs"
+
 class Mujs
   VERSION = "0.1.0"
 

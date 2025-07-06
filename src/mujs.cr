@@ -3,8 +3,23 @@ require "./lib_mujs"
 class Mujs
   VERSION = "0.1.0"
 
-  alias DefnArguments = Hash(Int32, Float64 | String | Nil)
-  alias DefnReturn = Float64 | String | Nil
+  class Opaque(T)
+    def self.box(js, object : T) : UInt64
+      hash = object.hash
+      js.opaque[hash] = Box(T).box(object)
+      hash
+    end
+
+    def self.unbox(js, hash : Mujs::DefnReturn) : T
+      hash = hash.as(Float64)
+      val = Box(T).unbox(js.opaque[hash])
+      js.opaque.delete(hash)
+      val
+    end
+  end
+
+  alias DefnArguments = Hash(Int32, Bool | Float64 | String | Nil)
+  alias DefnReturn = Bool | Float64 | String | Nil
 
   private macro must_be(ctype, msg)
     if LibMujs.js_type(@j, -1) != {{ctype}}
@@ -26,6 +41,8 @@ class Mujs
 
   private macro cast_and_push(val)
     case {{val}}
+    when Bool
+      LibMujs.js_pushboolean(state, {{val}})
     when Float64
       LibMujs.js_pushnumber(state, {{val}})
     when Int32
@@ -58,8 +75,11 @@ class Mujs
     end
   end
 
+  property opaque : Hash(UInt64, Pointer(Void))
+
   def initialize
     @j = LibMujs.js_newstate(nil, nil, 0)
+    @opaque = Hash(UInt64, Pointer(Void)).new
   end
 
   def dostring(code : String)
@@ -73,6 +93,10 @@ class Mujs
     if args.size > 0
       args.each do |arg|
         case arg
+        when Bool
+          LibMujs.js_pushboolean(@j, arg == true ? 1 : 0)
+        when UInt64
+          LibMujs.js_pushnumber(@j, arg)
         when Int32
           LibMujs.js_pushnumber(@j, arg)
         when Float64

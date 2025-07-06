@@ -1,3 +1,4 @@
+require "uri"
 require "./spec_helper"
 
 describe Mujs do
@@ -10,15 +11,29 @@ describe Mujs do
     js.dostring(%[function concatenar(a, b){ return a + b; };])
     js.dostring(%[function suma(a, b){ return a + b };])
     js.dostring(%[function mayor_a_1(n) { return n > 1}])
+    js.dostring(%[function negacion(v){ return !v; }])
     js.dostring(%[function nulo() { return null; }])
 
     js.call("suma", 3, 4).should eq(7)
     js.call("suma", 3.3, 4).should eq(7.3)
+    js.call("negacion", false).should eq(true)
     js.call("concatenar", "a", "b").should eq("ab")
     js.call("concatenar", "c", "d").should eq("cd")
     js.call("mayor_a_1", 2).should eq(true)
     js.call("mayor_a_1", 0).should eq(false)
     js.call("nulo").should eq(nil)
+  end
+
+  it "host->js sharing opaque resource" do
+    opaque = Hash(UInt64, Pointer(Void)).new
+    js = Mujs.new
+    sample = URI.parse("http://localhost")
+
+    js.dostring(%[function identity(resource){ return resource; };])
+
+    ret = js.call("identity", Mujs::Opaque.box(js, sample))
+
+    Mujs::Opaque(URI).unbox(js, ret).should eq sample
   end
 
   it "js->host call function" do

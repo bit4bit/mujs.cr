@@ -1,6 +1,23 @@
 # mujs
 
-Crystal Lang lightweight Javascript interpreter using MuJS.
+Crystal Lang embedded Javascript interpreter using MuJS.
+
+
+## Example
+
+```crystal
+require "mujs"
+
+js = Mujs.new
+
+js.defn("print", 1) do |args|
+  puts args[0].as(String)
+end
+
+js.dostring(%[print("hello world")])
+```
+
+more examples at `spec/mujs_spec.cr`.
 
 ## Installation
 

@@ -39,12 +39,14 @@ describe Mujs do
     js.defvar("varstring", "hola")
     js.defvar("varfloat", 1.65)
     js.defvar("varnull", nil)
+    js.defobject("varhash", {"test" => "value"}, schema: ["test"])
 
     js.var("varnum").should eq(1)
     js.var("varbool").should eq(false)
     js.var("varstring").should eq("hola")
     js.var("varfloat").should eq(1.65)
     js.var("varnull").should eq(nil)
+    js.object("varhash", schema: ["test"]).should eq({"test" => "value"})
   end
 
   it "host->js sharing opaque resource" do

@@ -18,7 +18,8 @@ class Mujs
     end
   end
 
-  alias DefnArguments = Hash(Int32, Bool | UInt64 | Float64 | String | Nil)
+  alias ValueTypes = Bool | Float64 | String | Nil
+  alias DefnArguments = Hash(Int32, ValueTypes)
   alias DefnReturn = Bool | UInt64 | Float64 | String | Nil
 
   private macro must_be(ctype, msg)
@@ -110,7 +111,17 @@ class Mujs
     pop_and_cast
   end
 
-  def defvar(name, value : Int32 | Bool | String | Float64 | Nil)
+  def defobject(name, value : Hash(String, ValueTypes), schema : Array(String))
+    LibMujs.js_newobject(@j)
+    schema.each do |attr|
+      field = value[attr]
+      cast_and_push(@j, field)
+      LibMujs.js_setproperty(@j, -2, attr)
+    end
+    LibMujs.js_setglobal(@j, name)
+  end
+
+  def defvar(name, value : ValueTypes | Hash(String, ValueTypes))
     cast_and_push(@j, value)
     LibMujs.js_setglobal(@j, name)
   end
@@ -118,6 +129,16 @@ class Mujs
   def var(name)
     LibMujs.js_getglobal(@j, name)
     pop_and_cast
+  end
+
+  def object(name, schema : Array(String))
+    ret = Hash(String, ValueTypes).new
+    LibMujs.js_getglobal(@j, name)
+    schema.each do |attr|
+      LibMujs.js_getproperty(@j, -1, attr)
+      ret[attr] = pop_and_cast
+    end
+    ret
   end
 
   @@functions = Hash({Mujs, String}, Pointer(Void)).new

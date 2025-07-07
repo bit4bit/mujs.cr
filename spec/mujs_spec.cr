@@ -32,6 +32,21 @@ describe Mujs do
     js.call("nulo").should eq(nil)
   end
 
+  it "host->js var" do
+    js = Mujs.new
+    js.defvar("varnum", 1)
+    js.defvar("varbool", false)
+    js.defvar("varstring", "hola")
+    js.defvar("varfloat", 1.65)
+    js.defvar("varnull", nil)
+
+    js.var("varnum").should eq(1)
+    js.var("varbool").should eq(false)
+    js.var("varstring").should eq("hola")
+    js.var("varfloat").should eq(1.65)
+    js.var("varnull").should eq(nil)
+  end
+
   it "host->js sharing opaque resource" do
     opaque = Hash(UInt64, Pointer(Void)).new
     js = Mujs.new

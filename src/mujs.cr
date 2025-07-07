@@ -39,22 +39,22 @@ class Mujs
     (LibMujs.js_toboolean(@j, -1) > 0)
   end
 
-  private macro cast_and_push(val)
+  private macro cast_and_push(state, val, msg = "")
     case {{val}}
     when Bool
-      LibMujs.js_pushboolean(state, {{val}})
+      LibMujs.js_pushboolean({{state}}, {{val}} == true ? 1 : 0)
     when UInt64
-      LibMujs.js_pushnumber(state, {{val}})
+      LibMujs.js_pushnumber({{state}}, {{val}})
     when Float64
-      LibMujs.js_pushnumber(state, {{val}})
+      LibMujs.js_pushnumber({{state}}, {{val}})
     when Int32
-      LibMujs.js_pushnumber(state, {{val}})
+      LibMujs.js_pushnumber({{state}}, {{val}})
     when String
-      LibMujs.js_pushstring(state, {{val}})
+      LibMujs.js_pushstring({{state}}, {{val}})
     when nil
-      LibMujs.js_pushnull(state)
+      LibMujs.js_pushnull({{state}})
     else
-      raise "unknown how to cast value of type #{{{val}}.class}"
+      raise "#{{{msg}}}:unknown how to cast value of type #{{{val}}.class}"
     end
   end
 
@@ -99,20 +99,7 @@ class Mujs
     LibMujs.js_pushnull(@j)
     if args.size > 0
       args.each do |arg|
-        case arg
-        when Bool
-          LibMujs.js_pushboolean(@j, arg == true ? 1 : 0)
-        when UInt64
-          LibMujs.js_pushnumber(@j, arg)
-        when Int32
-          LibMujs.js_pushnumber(@j, arg)
-        when Float64
-          LibMujs.js_pushnumber(@j, arg)
-        when String
-          LibMujs.js_pushstring(@j, arg)
-        else
-          raise ArgumentError.new("`#{fn_name}` not implemented casting for #{arg.class} of value `#{arg}`")
-        end
+        cast_and_push(@j, arg, "`#{fn_name}` not implemented casting for #{arg.class} of value `#{arg}`")
       end
     end
 
@@ -121,6 +108,11 @@ class Mujs
     end
 
     pop_and_cast
+  end
+
+  def defvar(name, value : Int32 | Bool | String | Float64 | Nil)
+    cast_and_push(@j, value)
+    LibMujs.js_setglobal(@j, name)
   end
 
   def var(name)
@@ -161,7 +153,7 @@ class Mujs
 
         begin
           res = fn.call(args)
-          cast_and_push(res)
+          cast_and_push(state, res)
         rescue ex
           # TODO: improv
           LibMujs.js_error(state, "HOST EXCEPTION: #{ex.inspect_with_backtrace}")
